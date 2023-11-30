@@ -266,7 +266,7 @@ func (r *InspectPlanReconciler) removeTask(ctx context.Context, plan *kubeeyev1a
 		if err != nil {
 			klog.Error("Failed to get inspect task for label", err)
 		}
-		if len(tasks) > plan.Spec.MaxTasks {
+		if len(tasks) >= plan.Spec.MaxTasks {
 			for _, task := range tasks[:len(tasks)-plan.Spec.MaxTasks] {
 				err = r.K8sClient.VersionClientSet.KubeeyeV1alpha2().InspectTasks().Delete(ctx, task.Name, metav1.DeleteOptions{})
 				if err == nil || kubeErr.IsNotFound(err) {
