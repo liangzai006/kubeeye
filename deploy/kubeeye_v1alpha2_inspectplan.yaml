@@ -5,6 +5,17 @@ metadata:
 spec:
   maxTasks: 10
   ruleNames:
-    - name: services-connect
+    - name:  inspect-rule-deployment
+    - name:  inspect-rule-event
+    - name:  inspect-rule-filechange
+    - name:  inspect-rule-filter-file
+    - name:  inspect-rule-namespace
+    - name:  inspect-rule-node
+    - name:  inspect-rule-node-info
+    - name:  inspect-rule-sbnormalpodstatus
+    - name:  inspect-rule-sysctl
+    - name:  inspect-rule-systemd
+    - name:  services-connect
+  schedule: "*/50 * * * ?"
   timeout: 30m
 
