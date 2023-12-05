@@ -1,6 +1,6 @@
 
 # Build the manager binary
-FROM --platform=${TARGETPLATFORM} golang:1.19 as builder
+FROM --platform=${TARGETPLATFORM} golang:1.20 as builder
 
 #RUN #go env -w GOPROXY=https://goproxy.cn,direct
 # Run this with docker build --build_arg $(go env GOPROXY) to override the goproxy
