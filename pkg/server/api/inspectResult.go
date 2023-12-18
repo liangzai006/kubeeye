@@ -74,7 +74,10 @@ func (i *InspectResult) ListInspectResult(gin *gin.Context) {
 			resultCustomized = append(resultCustomized, output.ParseCustomizedStruct(d))
 
 		}
-		gin.JSON(http.StatusOK, resultCustomized)
+		gin.JSON(http.StatusOK, query.Result{
+			TotalItems: len(resultCustomized),
+			Items:      resultCustomized,
+		})
 		return
 	}
 
