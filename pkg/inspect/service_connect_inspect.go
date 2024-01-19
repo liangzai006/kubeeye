@@ -31,7 +31,7 @@ func (c *serviceConnectInspect) RunInspect(ctx context.Context, rules []kubeeyev
 	})
 
 	if exist {
-		var components []kubeeyev1alpha2.ServiceConnectRuleItem
+		var components []kubeeyev1alpha2.ServiceConnectRule
 		err := json.Unmarshal(phase.RunRule, &components)
 		if err != nil {
 			return nil, err
@@ -90,8 +90,8 @@ func (c *serviceConnectInspect) checkConnection(address string) bool {
 	return true
 }
 
-func GetInspectComponent(ctx context.Context, clients *kube.KubernetesClient, serviceConnectRule []kubeeyev1alpha2.ServiceConnectRuleItem) (map[string]kubeeyev1alpha2.ServiceConnectRuleItem, error) {
-	var inspectService = make(map[string]kubeeyev1alpha2.ServiceConnectRuleItem)
+func GetInspectComponent(ctx context.Context, clients *kube.KubernetesClient, serviceConnectRule []kubeeyev1alpha2.ServiceConnectRule) (map[string]kubeeyev1alpha2.ServiceConnectRule, error) {
+	var inspectService = make(map[string]kubeeyev1alpha2.ServiceConnectRule)
 	list, err := clients.ClientSet.CoreV1().Services(corev1.NamespaceAll).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
@@ -101,7 +101,7 @@ func GetInspectComponent(ctx context.Context, clients *kube.KubernetesClient, se
 			namespaces := GetNameSpacesForWorkSpace(ctx, clients, service.Workspace)
 			for _, namespace := range namespaces {
 				for _, s := range GetServicesForNameSpace(list.Items, namespace.Name) {
-					inspectService[fmt.Sprintf("%s/%s", s.Name, s.Namespace)] = kubeeyev1alpha2.ServiceConnectRuleItem{
+					inspectService[fmt.Sprintf("%s/%s", s.Name, s.Namespace)] = kubeeyev1alpha2.ServiceConnectRule{
 						RuleItemBases: kubeeyev1alpha2.RuleItemBases{
 							Name:  s.Name,
 							Rule:  fmt.Sprintf("%s.%s.svc.cluster.local:%d", s.Name, s.Namespace, s.Spec.Ports[0].Port),
@@ -113,7 +113,7 @@ func GetInspectComponent(ctx context.Context, clients *kube.KubernetesClient, se
 			}
 		} else if !utils.IsEmptyValue(service.Namespace) {
 			for _, s := range GetServicesForNameSpace(list.Items, service.Namespace) {
-				inspectService[fmt.Sprintf("%s/%s", s.Name, s.Namespace)] = kubeeyev1alpha2.ServiceConnectRuleItem{
+				inspectService[fmt.Sprintf("%s/%s", s.Name, s.Namespace)] = kubeeyev1alpha2.ServiceConnectRule{
 					RuleItemBases: kubeeyev1alpha2.RuleItemBases{
 						Name:  s.Name,
 						Rule:  fmt.Sprintf("%s.%s.svc.cluster.local:%d", s.Name, s.Namespace, s.Spec.Ports[0].Port),
@@ -124,7 +124,7 @@ func GetInspectComponent(ctx context.Context, clients *kube.KubernetesClient, se
 			}
 		} else {
 			if s, ok := GetServices(list.Items, service.Name); ok {
-				inspectService[fmt.Sprintf("%s/%s", s.Name, s.Namespace)] = kubeeyev1alpha2.ServiceConnectRuleItem{
+				inspectService[fmt.Sprintf("%s/%s", s.Name, s.Namespace)] = kubeeyev1alpha2.ServiceConnectRule{
 					RuleItemBases: kubeeyev1alpha2.RuleItemBases{
 						Name:  s.Name,
 						Rule:  fmt.Sprintf("%s.%s.svc.cluster.local:%d", s.Name, s.Namespace, s.Spec.Ports[0].Port),

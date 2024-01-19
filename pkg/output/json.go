@@ -2,67 +2,64 @@ package output
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	kubeeyev1alpha2 "github.com/kubesphere/kubeeye/apis/kubeeye/v1alpha2"
-	"github.com/kubesphere/kubeeye/pkg/constant"
 	"github.com/kubesphere/kubeeye/pkg/kube"
-	"github.com/pkg/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/utils/strings/slices"
-	"os"
 	"strconv"
 	"strings"
-	"time"
 )
 
-func JsonOut(ctx context.Context, clients *kube.KubernetesClient, outPath string, TaskName string) error {
-	results, err := clients.VersionClientSet.KubeeyeV1alpha2().InspectResults().Get(ctx, TaskName, metav1.GetOptions{})
-	if err != nil {
-		return errors.Errorf("result not exist")
-	}
-	var result = make(map[string]interface{}, 3)
+func ParseCustomizedStruct(ctx context.Context, client *kube.KubernetesClient, data *kubeeyev1alpha2.InspectResult) map[string]interface{} {
 
-	if results.Spec.OpaResult.ResourceResults != nil {
-		result[constant.Opa] = results.Spec.OpaResult.ResourceResults
-	}
-	if results.Spec.PrometheusResult != nil {
-		result[constant.Prometheus] = results.Spec.PrometheusResult
-	}
-
-	if results.Spec.ServiceConnectResult != nil {
-		result[constant.ServiceConnect] = results.Spec.ServiceConnectResult
-	}
-
-	marshal, err := json.Marshal(result)
-	if err != nil {
-		return err
-	}
-
-	name := ParseFileName(outPath, fmt.Sprintf("巡检报告(%s).json", time.Now().Format("2006-01-02")))
-
-	jsonFile, err := os.Create(name)
-	if err != nil {
-		return err
-	}
-	defer jsonFile.Close()
-	_, err = jsonFile.Write(marshal)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func ParseCustomizedStruct(data *kubeeyev1alpha2.InspectResult) map[string]interface{} {
-	status := ParseApiStatus(data)
-	resources := ParseResources(data)
-	top := ParseResourcesTop(data)
 	metric := ParseOtherMetric(data)
-	count := OverviewCount(metric, data.Spec.ComponentResult)
 
-	return map[string]interface{}{"name": data.Name, "cluster": data.Spec.InspectCluster.Name, "overview_count": count, "component_status": data.Spec.ComponentResult, "api_status": status, "resources_usage": resources, "resources_usage_top": top, "metric": metric}
+	var nodes []v1.Node
+	if data.Spec.InspectCluster.Name == "default" {
+		nodes = kube.GetNodes(ctx, client.ClientSet)
+	} else {
+		clusterClient, err := kube.GetMultiClusterClient(ctx, client, data.Spec.InspectCluster.Name)
+		if err == nil {
+			nodes = kube.GetNodes(ctx, clusterClient.ClientSet)
+		}
+	}
+
+	return map[string]interface{}{
+		"name":                data.Name,
+		"cluster":             data.Spec.InspectCluster.Name,
+		"overview_count":      OverviewCount(metric, data.Spec.ComponentResult),
+		"component_status":    data.Spec.ComponentResult,
+		"api_status":          ParseApiStatus(data),
+		"resources_usage":     ParseResources(data),
+		"resources_usage_top": ParseResourcesTop(data),
+		"metric":              metric,
+		"nodes_status":        ParseNodeStatus(nodes)}
 }
 
+func ParseNodeStatus(nodes []v1.Node) map[string]int {
+	nodeStatus := map[string]int{"total": len(nodes), "ready": 0, "not_ready": 0, "no_schedule": 0}
+
+	IsNodesSchedule := func(node v1.Node) bool {
+		for _, taint := range node.Spec.Taints {
+			if taint.Key == "node.kubernetes.io/unschedulable" && taint.Effect == v1.TaintEffectNoSchedule {
+				return true
+			}
+		}
+		return false
+	}
+
+	for _, node := range nodes {
+		if !kube.IsNodesReady(node) {
+			nodeStatus["not_ready"]++
+		} else if IsNodesSchedule(node) {
+			nodeStatus["no_schedule"]++
+		} else {
+			nodeStatus["ready"]++
+		}
+	}
+
+	return nodeStatus
+}
 func ParseApiStatus(result *kubeeyev1alpha2.InspectResult) map[string]string {
 	apiStatus := make(map[string]string, 2)
 	for _, pro := range result.Spec.PrometheusResult {

@@ -514,9 +514,23 @@ func isTimeout(startTime metav1.Time, t string) bool {
 // InitClusterInspect Initialize the relevant configuration items required for multi-cluster inspection
 func (r *InspectTaskReconciler) initClusterInspectConfig(ctx context.Context, clients *kube.KubernetesClient) error {
 
-	_, err := clients.ClientSet.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: constant.DefaultNamespace}}, metav1.CreateOptions{})
-	if err != nil && !kubeErr.IsAlreadyExists(err) {
-		return err
+	_, err := clients.ClientSet.CoreV1().Namespaces().Get(ctx, constant.DefaultNamespace, metav1.GetOptions{})
+	if err != nil {
+		if kubeErr.IsNotFound(err) {
+			_, err = clients.ClientSet.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   constant.DefaultNamespace,
+					Labels: map[string]string{"kubesphere.io/workspace": "system-workspace"},
+				}},
+				metav1.CreateOptions{})
+
+			if err != nil && !kubeErr.IsAlreadyExists(err) {
+				return err
+			}
+		} else {
+			return err
+		}
+
 	}
 
 	_, err = clients.ClientSet.RbacV1().ClusterRoles().Create(ctx, template.GetClusterRoleTemplate(), metav1.CreateOptions{})

@@ -40,7 +40,7 @@ func (n *nodeInfoInspect) RunInspect(ctx context.Context, rules []kubeeyev1alpha
 		if err != nil {
 			return nil, err
 		}
-		var nodeInfo []kubeeyev1alpha2.NodeInfo
+		var nodeInfo []kubeeyev1alpha2.NodeInfoRule
 		err = json.Unmarshal(phase.RunRule, &nodeInfo)
 		if err != nil {
 			klog.Error(err, " Failed to marshal kubeeye result")
