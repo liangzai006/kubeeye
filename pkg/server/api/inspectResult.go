@@ -70,8 +70,7 @@ func (i *InspectResult) ListInspectResult(gin *gin.Context) {
 				gin.JSON(http.StatusInternalServerError, NewErrors(e.Error(), "InspectResult"))
 				return
 			}
-
-			resultCustomized = append(resultCustomized, output.ParseCustomizedStruct(d))
+			resultCustomized = append(resultCustomized, output.ParseCustomizedStruct(i.Ctx, i.Clients, d))
 
 		}
 		gin.JSON(http.StatusOK, query.Result{
@@ -130,7 +129,7 @@ func (i *InspectResult) GetInspectResult(gin *gin.Context) {
 			gin.JSON(http.StatusInternalServerError, NewErrors(err.Error(), "InspectResult"))
 			return
 		}
-		customizedStruct := output.ParseCustomizedStruct(data)
+		customizedStruct := output.ParseCustomizedStruct(i.Ctx, i.Clients, data)
 		gin.JSON(http.StatusOK, customizedStruct)
 
 	default:

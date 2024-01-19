@@ -28,16 +28,16 @@ type InspectRuleSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	PrometheusEndpoint string                   `json:"prometheusEndpoint,omitempty"`
-	Opas               []OpaRule                `json:"opas,omitempty"`
-	Prometheus         []PrometheusRule         `json:"prometheus,omitempty"`
-	FileChange         []FileChangeRule         `json:"fileChange,omitempty" `
-	Sysctl             []SysRule                `json:"sysctl,omitempty"`
-	Systemd            []SysRule                `json:"systemd,omitempty"`
-	FileFilter         []FileFilterRule         `json:"fileFilter,omitempty"`
-	CustomCommand      []CustomCommandRule      `json:"customCommand,omitempty"`
-	NodeInfo           []NodeInfo               `json:"nodeInfo,omitempty"`
-	ServiceConnect     []ServiceConnectRuleItem `json:"serviceConnect,omitempty"`
+	PrometheusEndpoint string               `json:"prometheusEndpoint,omitempty"`
+	Opas               []OpaRule            `json:"opas,omitempty"`
+	Prometheus         []PrometheusRule     `json:"prometheus,omitempty"`
+	FileChange         []FileChangeRule     `json:"fileChange,omitempty" `
+	Sysctl             []SysRule            `json:"sysctl,omitempty"`
+	Systemd            []SysRule            `json:"systemd,omitempty"`
+	FileFilter         []FileFilterRule     `json:"fileFilter,omitempty"`
+	CustomCommand      []CustomCommandRule  `json:"customCommand,omitempty"`
+	NodeInfo           []NodeInfoRule       `json:"nodeInfo,omitempty"`
+	ServiceConnect     []ServiceConnectRule `json:"serviceConnect,omitempty"`
 }
 type RuleItemBases struct {
 	Name  string `json:"name,omitempty"`
@@ -46,7 +46,7 @@ type RuleItemBases struct {
 	Level Level  `json:"level,omitempty"`
 }
 
-type ServiceConnectRuleItem struct {
+type ServiceConnectRule struct {
 	RuleItemBases `json:",inline"`
 	Namespace     string `json:"namespace,omitempty"`
 	Workspace     string `json:"workspace,omitempty"`
@@ -57,7 +57,7 @@ type Node struct {
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 }
 
-type NodeInfo struct {
+type NodeInfoRule struct {
 	RuleItemBases `json:",inline"`
 	Node          `json:",inline"`
 	ResourcesType string `json:"resourcesType,omitempty"`

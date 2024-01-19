@@ -163,7 +163,7 @@ func ComputeLevel(data interface{}, mapLevel map[kubeeyev1alpha2.Level]*int) {
 	for _, m := range maps {
 		v, ok := m["level"]
 		if !ok {
-			mapLevel[kubeeyev1alpha2.DangerLevel] = Autoincrement(kubeeyev1alpha2.DangerLevel)
+			mapLevel[kubeeyev1alpha2.WarningLevel] = Autoincrement(kubeeyev1alpha2.WarningLevel)
 		} else {
 			l := v.(string)
 			mapLevel[kubeeyev1alpha2.Level(l)] = Autoincrement(kubeeyev1alpha2.Level(l))
