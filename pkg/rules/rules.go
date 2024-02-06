@@ -6,7 +6,6 @@ import (
 	"fmt"
 	kubeeyev1alpha2 "github.com/kubesphere/kubeeye/apis/kubeeye/v1alpha2"
 	"github.com/kubesphere/kubeeye/pkg/constant"
-	"github.com/kubesphere/kubeeye/pkg/inspect"
 	"github.com/kubesphere/kubeeye/pkg/kube"
 	"github.com/kubesphere/kubeeye/pkg/template"
 	"github.com/kubesphere/kubeeye/pkg/utils"
@@ -19,6 +18,7 @@ import (
 func RuleArrayDeduplication[T any](obj interface{}) []T {
 	maps, err := utils.ArrayStructToArrayMap(obj)
 	if err != nil {
+		klog.Error(err, "Failed to convert rule to map.")
 		return nil
 	}
 	var newMaps []map[string]interface{}
@@ -36,16 +36,11 @@ func RuleArrayDeduplication[T any](obj interface{}) []T {
 
 func Allocation(rule interface{}, taskName string, ruleType string) (*kubeeyev1alpha2.JobRule, error) {
 
-	toMap, err := utils.ArrayStructToArrayMap(rule)
-	if err != nil {
-		klog.Errorf("Failed to convert rule to map. err:%s", err)
-		return nil, err
-	}
-	if toMap == nil && ruleType != constant.Component {
+	if rule == nil && ruleType != constant.Component {
 		return nil, fmt.Errorf("failed to Allocation rule for empty")
 	}
 
-	marshalRule, err := json.Marshal(toMap)
+	marshalRule, err := json.Marshal(rule)
 	if err != nil {
 		return nil, err
 	}
@@ -57,20 +52,14 @@ func Allocation(rule interface{}, taskName string, ruleType string) (*kubeeyev1a
 	}, nil
 }
 
-func AllocationRule(rule interface{}, taskName string, allNode []corev1.Node, ctlOrTem string) ([]kubeeyev1alpha2.JobRule, error) {
+func AllocationRule(rule []interface{}, taskName string, allNode []corev1.Node, ctlOrTem string) ([]kubeeyev1alpha2.JobRule, error) {
 
-	toMap, err := utils.ArrayStructToArrayMap(rule)
-	if err != nil {
-		klog.Errorf("Failed to convert rule to map. err:%s", err)
-		return nil, err
-	}
-
-	nodeData, filterData := utils.ArrayFilter(toMap, func(v map[string]interface{}) bool {
-		return v["nodeName"] != nil || v["nodeSelector"] != nil
+	nodeData, filterData := utils.ArrayFilter[interface{}](rule, func(v interface{}) bool {
+		return v.(map[string]interface{})["nodeName"] != nil || v.(map[string]interface{})["nodeSelector"] != nil
 	})
 	var jobRules []kubeeyev1alpha2.JobRule
 	nodeNameMergeMap := mergeNodeRule(nodeData, allNode)
-
+	var err error
 	for _, v := range nodeNameMergeMap {
 		jobRule := kubeeyev1alpha2.JobRule{
 			JobName:  fmt.Sprintf("%s-%s-%s", taskName, ctlOrTem, rand.String(5)),
@@ -92,7 +81,7 @@ func AllocationRule(rule interface{}, taskName string, allNode []corev1.Node, ct
 				RuleType: ctlOrTem,
 			}
 			for i := range filterData {
-				filterData[i]["nodeName"] = &item.Name
+				filterData[i].(map[string]interface{})["nodeName"] = &item.Name
 			}
 			jobRule.RunRule, err = json.Marshal(filterData)
 			if err != nil {
@@ -107,13 +96,13 @@ func AllocationRule(rule interface{}, taskName string, allNode []corev1.Node, ct
 	return jobRules, nil
 }
 
-func mergeNodeRule(rule []map[string]interface{}, allNode []corev1.Node) map[string][]map[string]interface{} {
+func mergeNodeRule(rule []interface{}, allNode []corev1.Node) map[string][]map[string]interface{} {
 	var mergeMap = make(map[string][]map[string]interface{})
 	for _, m := range rule {
-		nnv, nnvExist := m["nodeName"]
-		nsv, nsvExist := m["nodeSelector"]
+		nnv, nnvExist := m.(map[string]interface{})["nodeName"]
+		nsv, nsvExist := m.(map[string]interface{})["nodeSelector"]
 		if nnvExist && !utils.IsEmptyValue(nnv) {
-			mergeMap[nnv.(string)] = append(mergeMap[nnv.(string)], m)
+			mergeMap[nnv.(string)] = append(mergeMap[nnv.(string)], m.(map[string]interface{}))
 		} else if nsvExist {
 			convertMap := utils.MapValConvert[string](nsv.(map[string]interface{}))
 			filterData, _ := utils.ArrayFilter(allNode, func(m corev1.Node) bool {
@@ -124,7 +113,7 @@ func mergeNodeRule(rule []map[string]interface{}, allNode []corev1.Node) map[str
 				return isExist
 			})
 			for _, data := range filterData {
-				copyMap := utils.DeepCopyMap(m)
+				copyMap := utils.DeepCopyMap(m.(map[string]interface{}))
 				copyMap["nodeName"] = data.Name
 				mergeMap[data.Name] = append(mergeMap[data.Name], copyMap)
 			}
@@ -209,59 +198,65 @@ func (e *ExecuteRule) SetPrometheusEndpoint(allRule []kubeeyev1alpha2.InspectRul
 	return allRule
 }
 
-func (e *ExecuteRule) MergeRule(allRule []kubeeyev1alpha2.InspectRule) (kubeeyev1alpha2.InspectRuleSpec, error) {
-	var newRuleSpec kubeeyev1alpha2.InspectRuleSpec
+func (e *ExecuteRule) MergeRule(allRule []kubeeyev1alpha2.InspectRule) (map[string][]interface{}, error) {
+	//var newRuleSpec kubeeyev1alpha2.InspectRuleSpec
 	var newSpecMap = make(map[string][]interface{})
-	ruleTotal := map[string]int{constant.Component: 0}
+	ruleTotal := map[string]int{constant.Component: 1}
 	for _, rule := range e.SetPrometheusEndpoint(e.SetRuleSchedule(allRule)) {
-		if rule.Spec.ServiceConnect != nil && newRuleSpec.ServiceConnect == nil {
-			newRuleSpec.ServiceConnect = rule.Spec.ServiceConnect
-			component, err := inspect.GetInspectComponent(context.TODO(), e.KubeClient, newRuleSpec.ServiceConnect)
-			if err != nil {
-				ruleTotal[constant.ServiceConnect] = 0
-			} else {
-				ruleTotal[constant.ServiceConnect] = len(component)
-			}
-
-		}
 		toMap := utils.StructToMap(rule.Spec)
 		for k, v := range toMap {
 			switch val := v.(type) {
 			case []interface{}:
-				newSpecMap[k] = RuleArrayDeduplication[interface{}](append(newSpecMap[k], val...))
-				ruleTotal[e.clusterInspectRuleMap[k]] = len(newSpecMap[k])
-			}
-		}
-	}
-
-	for _, namespace := range constant.SystemNamespaces {
-		list, err := e.KubeClient.ClientSet.CoreV1().Services(namespace).List(context.TODO(), metav1.ListOptions{})
-		if err == nil {
-			for _, item := range list.Items {
-				if len(item.Spec.Selector) > 0 {
-					ruleTotal[constant.Component] += 1
+				dedupMap := RuleArrayDeduplication[interface{}](append(newSpecMap[k], val...))
+				if dedupMap != nil {
+					newSpecMap[k] = dedupMap
+					ruleTotal[e.clusterInspectRuleMap[k]] = len(newSpecMap[k])
+				} else {
+					newSpecMap[k] = append(newSpecMap[k], val...)
 				}
 			}
 		}
 	}
 
-	marshal, err := json.Marshal(newSpecMap)
-	if err != nil {
-		return newRuleSpec, err
-	}
-	err = json.Unmarshal(marshal, &newRuleSpec)
-	if err != nil {
-		return newRuleSpec, err
-	}
+	//if rule.Spec.ServiceConnect != nil && newRuleSpec.ServiceConnect == nil {
+	//	newRuleSpec.ServiceConnect = rule.Spec.ServiceConnect
+	//	component, err := inspect.GetInspectComponent(context.TODO(), e.KubeClient, newRuleSpec.ServiceConnect)
+	//	if err != nil {
+	//		ruleTotal[constant.ServiceConnect] = 0
+	//	} else {
+	//		ruleTotal[constant.ServiceConnect] = len(component)
+	//	}
+	//
+	//}
+	//convert := utils.ArrayValConvert[string](newSpecMap["componentExclude"])
+	//for _, namespace := range constant.SystemNamespaces {
+	//	list, err := e.KubeClient.ClientSet.CoreV1().Services(namespace).List(context.TODO(), metav1.ListOptions{})
+	//	if err == nil {
+	//		for _, item := range list.Items {
+	//			if len(item.Spec.Selector) > 0 && !slices.Contains(convert, item.Name) {
+	//				ruleTotal[constant.Component] += 1
+	//			}
+	//		}
+	//	}
+	//}
+
+	//marshal, err := json.Marshal(newSpecMap)
+	//if err != nil {
+	//	return newRuleSpec, err
+	//}
+	//err = json.NewDecoder(bytes.NewReader(marshal)).Decode(&newRuleSpec)
+	//if err != nil {
+	//	return newRuleSpec, err
+	//}
 	e.ruleTotal = ruleTotal
-	return newRuleSpec, nil
+	return newSpecMap, nil
 }
 
-func (e *ExecuteRule) GenerateJob(ctx context.Context, rulesSpec kubeeyev1alpha2.InspectRuleSpec) (jobs []kubeeyev1alpha2.JobRule) {
+func (e *ExecuteRule) GenerateJob(ctx context.Context, rulesSpec map[string][]interface{}) (jobs []kubeeyev1alpha2.JobRule) {
 
-	toMap := utils.StructToMap(rulesSpec)
+	//toMap := utils.StructToMap(rulesSpec)
 	nodes := kube.GetNodes(ctx, e.KubeClient.ClientSet)
-	for key, v := range toMap {
+	for key, v := range rulesSpec {
 		mapV, mapExist := e.clusterInspectRuleMap[key]
 		if mapExist {
 			_, exist := utils.ArrayFind(mapV, e.clusterInspectRuleNames)
@@ -278,7 +273,8 @@ func (e *ExecuteRule) GenerateJob(ctx context.Context, rulesSpec kubeeyev1alpha2
 			}
 		}
 	}
-	component, err := Allocation(nil, e.Task.Name, constant.Component)
+
+	component, err := Allocation(rulesSpec["componentExclude"], e.Task.Name, constant.Component)
 	if err == nil {
 		jobs = append(jobs, *component)
 	}

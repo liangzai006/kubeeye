@@ -28,6 +28,7 @@ type InspectRuleSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
+	ComponentExclude   []string             `json:"componentExclude,omitempty"`
 	PrometheusEndpoint string               `json:"prometheusEndpoint,omitempty"`
 	Opas               []OpaRule            `json:"opas,omitempty"`
 	Prometheus         []PrometheusRule     `json:"prometheus,omitempty"`

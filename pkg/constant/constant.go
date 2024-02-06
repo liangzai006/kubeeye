@@ -12,7 +12,7 @@ const (
 	DefaultNamespace = "kubeeye-system"
 )
 
-var SystemNamespaces = []string{"kubesphere-system", "kubesphere-logging-system", "kubesphere-monitoring-system", "openpitrix-system", "kube-system", "istio-system", "kubesphere-devops-system", "porter-system"}
+var SystemNamespaces = []string{"kubeeye-system", "kubesphere-system", "kubesphere-logging-system", "kubesphere-monitoring-system", "openpitrix-system", "kube-system", "istio-system", "kubesphere-devops-system", "porter-system"}
 
 const BaseFilePrefix = "kubeeye-base-file"
 const (
@@ -60,6 +60,7 @@ const (
 	AnnotationJoinRuleNum   = "kubeeye.kubesphere.io/join-rule-num"
 	AnnotationDescription   = "kubeeye.kubesphere.io/description"
 	AnnotationInspectType   = "kubeeye.kubesphere.io/inspect-type"
+	AnnotationInspectIgnore = "kubeeye.kubesphere.io/inspect-ignore"
 )
 
 const (
