@@ -150,6 +150,14 @@ func MapValConvert[T any](mapV1 map[string]interface{}) map[string]T {
 	return newMap
 }
 
+func ArrayValConvert[T any](arrayV1 []interface{}) []T {
+	var newVal []T
+	for _, v := range arrayV1 {
+		newVal = append(newVal, v.(T))
+	}
+	return newVal
+}
+
 func DeepCopyMap[T any](obj map[string]T) map[string]T {
 	if obj == nil {
 		return nil
